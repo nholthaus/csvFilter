@@ -181,6 +181,7 @@ void CsvFilter::setupOutputDock()
 	m_outputView->setModel(m_masterSpreadSheetModel);
 	m_outputView->horizontalHeader()->setSectionsMovable(true);
 	m_outputView->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
+	m_outputView->setSortingEnabled(true);
 }
 
 //------------------------------------------------------------------------------
