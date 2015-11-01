@@ -10,6 +10,7 @@
 #include <QFrame>
 #include <QStatusBar>
 #include <QTimer>
+#include <QHeaderView>
 
 //------------------------------------------------------------------------------
 //	FUNCTION: CsvFilter [ public ]
@@ -49,6 +50,7 @@ void CsvFilter::setupMasterSpreadsheet()
 	m_masterSpreadSheetLayout = new QHBoxLayout(m_masterSpreadSheetGroup);
 	m_masterSpeadSheetLineEdit = new QLineEdit(m_masterSpreadSheetGroup);
 	m_masterSpreadSheetBrowseButton = new QPushButton("Browse...", m_masterSpreadSheetGroup);
+	m_masterSpreadSheetModel = new csvModel(this);
 
 	m_centralWidgetLayout->addWidget(m_masterSpreadSheetGroup);
 
@@ -59,7 +61,8 @@ void CsvFilter::setupMasterSpreadsheet()
 
 	m_masterSpreadSheetGroup->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
-	m_masterSpeadSheetLineEdit->setCompleter(new QCompleter(new QDirModel(QStringList() << "*.csv", QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot, QDir::Name), m_masterSpeadSheetLineEdit));
+	m_masterSpeadSheetLineEdit->setCompleter(new QCompleter(new QFileSystemModel/*QDirModel(QStringList() << "*.csv", QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot, QDir::Name)*/, m_masterSpeadSheetLineEdit));
+	static_cast<QFileSystemModel*>(m_masterSpeadSheetLineEdit->completer()->model())->setRootPath(QDir::rootPath());
 	m_masterSpeadSheetLineEdit->setPlaceholderText("Path to master spreadsheet...");
 	m_masterSpeadSheetLineEdit->setAcceptDrops(true);
 	connect(m_masterSpreadSheetBrowseButton, &QPushButton::clicked, [&]
@@ -73,13 +76,20 @@ void CsvFilter::setupMasterSpreadsheet()
 	{
 		QTimer::singleShot(0, [this]
 		{
-			this->m_masterSpeadSheetLineEdit->setText(this->m_masterSpeadSheetLineEdit->text() + '\\'); 
-			this->m_masterSpeadSheetLineEdit->editingFinished();
-			QTimer::singleShot(0, [this]
+			if (!this->m_masterSpeadSheetLineEdit->text().endsWith('\\', Qt::CaseInsensitive))
 			{
-				this->m_masterSpeadSheetLineEdit->completer()->complete();
-			});
+				this->m_masterSpeadSheetLineEdit->setText(this->m_masterSpeadSheetLineEdit->text().append('\\')); 
+			}
 		});
+	});
+	connect(m_masterSpeadSheetLineEdit, &QLineEdit::textChanged, [&](const QString& text)
+	{
+		if (text.endsWith(".csv"))
+		{
+			this->statusBar()->showMessage("Parsing " + text + "...");
+			m_masterSpreadSheetModel->importFromFile(text);
+			this->statusBar()->clearMessage();
+		}
 	});
 }
 
@@ -103,4 +113,7 @@ void CsvFilter::setupOutputDock()
 
 	m_outputView = new QTableView(m_outputDock);
 	m_outputDock->setWidget(m_outputView);
+
+	m_outputView->setModel(m_masterSpreadSheetModel);
+	m_outputView->horizontalHeader()->setSectionsMovable(true);
 }

@@ -32,6 +32,8 @@
 //--------------------
 //	INCLUDES
 //--------------------
+
+// Qt
 #include <QMainWindow>
 #include <QGroupBox>
 #include <QHBoxLayout>
@@ -41,6 +43,13 @@
 #include <QFileSystemModel>
 #include <QDockWidget>
 #include <QTableView>
+#include <QDebug>
+
+// std
+#include <memory>
+
+// local
+#include "csvModel.h"
 
 //------------------------------------------------------------
 //	@class 		
@@ -71,6 +80,7 @@ private:
 	QHBoxLayout*			m_masterSpreadSheetLayout;
 	QLineEdit*				m_masterSpeadSheetLineEdit;
 	QPushButton*			m_masterSpreadSheetBrowseButton;
+	csvModel*				m_masterSpreadSheetModel;
 
 	QGroupBox*				m_filterSpreadSheetGroup;
 	QGroupBox*				m_outputGroup;
