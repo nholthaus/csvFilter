@@ -69,6 +69,8 @@ protected:
 	virtual void setupMasterSpreadsheet();
 	virtual void setupFilterSpreadsheet();
 	virtual void setupOutputDock();
+	virtual QSize sizeHint() const override;
+
 
 private:
 
@@ -83,9 +85,15 @@ private:
 	csvModel*				m_masterSpreadSheetModel;
 
 	QGroupBox*				m_filterSpreadSheetGroup;
-	QGroupBox*				m_outputGroup;
+	QVBoxLayout*			m_filterSpreadSheetLayout;
+	QHBoxLayout*			m_filterSpreadSheetPathLayout;
+	QLineEdit*				m_filterSpeadSheetLineEdit;
+	QPushButton*			m_filterSpreadSheetBrowseButton;
+	QTableView*				m_filterSpreadSheetView;
+	csvModel*				m_filterSpreadSheetModel;
 
 	QDockWidget*			m_outputDock;
+	QGroupBox*				m_outputGroup;
 	QTableView*				m_outputView;
 
 };
