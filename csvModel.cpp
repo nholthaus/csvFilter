@@ -96,10 +96,8 @@ csvModel* csvModel::filter(csvModel* filter)
 		int masterColumn;
 		for (masterColumn = 0; masterColumn < this->columnCount(); masterColumn++)
 		{
-			qDebug() << columnName << "?=" << this->headerData(masterColumn, Qt::Horizontal, Qt::DisplayRole).toString();
 			if (this->headerData(masterColumn, Qt::Horizontal, Qt::DisplayRole).toString() == columnName)
 			{
-				qDebug() << masterColumn << "==" << columnName;
 				break;
 			}
 		}

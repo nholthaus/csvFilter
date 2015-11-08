@@ -2,21 +2,24 @@
 
 #include "filterModelDelegate.h"
 
-#include <QIcon>
-#include <QFile>
+#include <QAction>
 #include <QCompleter>
-#include <QFileSystemModel>
-#include <QFileDialog>
-#include <QStandardPaths>
 #include <QDirModel>
+#include <QDropEvent>
+#include <QFile>
+#include <QFileDialog>
+#include <QFileSystemModel>
 #include <QFrame>
+#include <QHeaderView>
+#include <QIcon>
+#include <QMediaPlayer>
+#include <QMenu>
+#include <QMimeData>
+#include <QStandardPaths>
 #include <QStatusBar>
 #include <QTimer>
-#include <QHeaderView>
-#include <QDropEvent>
-#include <QMimeData>
-#include <QMenu>
-#include <QMediaPlayer>
+
+#include <vector>
 
 //------------------------------------------------------------------------------
 //	FUNCTION: CsvFilter [ public ]
@@ -201,6 +204,8 @@ void CsvFilterWindow::setupFilterSpreadsheet()
 	m_filterSpreadSheetView->horizontalHeader()->setSectionsMovable(true);
 	m_filterSpreadSheetView->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
 	m_filterSpreadSheetView->setItemDelegate(new filterModelDelegate(this));
+	m_filterSpreadSheetGroup->setContextMenuPolicy(Qt::CustomContextMenu);
+	connect(m_filterSpreadSheetGroup, &QTableView::customContextMenuRequested, this, &CsvFilterWindow::filterContextMenu);
 }
 
 //------------------------------------------------------------------------------
@@ -274,5 +279,71 @@ void CsvFilterWindow::mousePressEvent(QMouseEvent *e)
 	else
 	{
 		QMainWindow::mousePressEvent(e);
+	}
+}
+
+//------------------------------------------------------------------------------
+//	FUNCTION: filterContextMenu [ protected ]
+//------------------------------------------------------------------------------
+void CsvFilterWindow::filterContextMenu(const QPoint& pos)
+{
+	if (m_filterSpreadSheetView->selectionModel()->hasSelection())
+	{
+		QMenu menu;
+		bool addGroupAction = false;
+		bool addUngroupAction = false;
+		QList<int> selectedColumns;
+
+		for (int col = 0; col < m_filterSpreadSheetModel->columnCount(); ++col)
+		{
+			if (m_filterSpreadSheetView->selectionModel()->columnIntersectsSelection(col, QModelIndex()))
+			{
+				selectedColumns.push_back(col);
+			}
+		}
+
+		
+		for (int col = 0; col < m_filterSpreadSheetModel->columnCount(); ++col)
+		{
+			if (m_filterSpreadSheetView->selectionModel()->columnIntersectsSelection(col, QModelIndex()))
+			{
+				int group = m_filterSpreadSheetModel->data(m_filterSpreadSheetModel->index(1, col)).toInt();
+				if (selectedColumns.size() > 1)
+				{
+					addGroupAction = true;
+				}
+				if (group > 0)
+				{
+					addUngroupAction = true;
+				}
+			}
+		}
+
+		if (addGroupAction)
+		{
+			QAction* groupAction = new QAction("group", &menu);
+			menu.addAction(groupAction);
+			connect(groupAction, &QAction::triggered, [&, selectedColumns]
+			{			
+				m_filterSpreadSheetModel->group(selectedColumns);
+				m_filterSpreadSheetView->clearSelection();
+			});
+		}
+
+		if (addUngroupAction)
+		{
+			QAction* ungroupAction = new QAction("ungroup", &menu);
+			menu.addAction(ungroupAction);
+			connect(ungroupAction, &QAction::triggered, [&, selectedColumns]
+			{
+				m_filterSpreadSheetModel->ungroup(selectedColumns);
+				m_filterSpreadSheetView->clearSelection();
+			});
+		}
+
+		if (addGroupAction || addUngroupAction)
+		{
+			menu.exec(this->cursor().pos());
+		}
 	}
 }

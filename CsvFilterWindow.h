@@ -79,6 +79,8 @@ protected:
 	virtual void customContextMenu();
 	virtual void mousePressEvent(QMouseEvent *) override;
 
+	void filterContextMenu(const QPoint& pos);
+
 private:
 
 	// central widget
