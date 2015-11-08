@@ -15,6 +15,7 @@
 #include <QMediaPlayer>
 #include <QMenu>
 #include <QMimeData>
+#include <QSettings>
 #include <QStandardPaths>
 #include <QStatusBar>
 #include <QTimer>
@@ -44,6 +45,10 @@ CsvFilterWindow::CsvFilterWindow(QWidget* parent /*= (QObject*)0*/)
 	setupFilterSpreadsheet();
 	setupOutputDock();
 
+	// restore state
+	QSettings settings("Menari Softworks", "csvFilter");
+	this->restoreGeometry(settings.value("geometry").toByteArray());
+	this->restoreState(settings.value("state").toByteArray());
 }
 
 //------------------------------------------------------------------------------
@@ -52,6 +57,17 @@ CsvFilterWindow::CsvFilterWindow(QWidget* parent /*= (QObject*)0*/)
 CsvFilterWindow::~CsvFilterWindow()
 {
 
+}
+
+//------------------------------------------------------------------------------
+//	FUNCTION: closeEvent [ public ]
+//------------------------------------------------------------------------------
+void CsvFilterWindow::closeEvent(QCloseEvent *e)
+{
+	QSettings settings("Menari Softworks", "csvFilter");
+	settings.setValue("geometry", saveGeometry());
+	settings.setValue("state", saveState());
+	QMainWindow::closeEvent(e);
 }
 
 //------------------------------------------------------------------------------

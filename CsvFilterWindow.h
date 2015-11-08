@@ -80,6 +80,7 @@ protected:
 	virtual void mousePressEvent(QMouseEvent *) override;
 
 	void filterContextMenu(const QPoint& pos);
+	virtual void closeEvent(QCloseEvent *) override;
 
 private:
 
