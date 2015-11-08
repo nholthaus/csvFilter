@@ -48,7 +48,7 @@ bool csvModel::importFromFile(QString csvFilePath)
 	if (!csvFile.atEnd())
 	{
 		QString line = csvFile.readLine();
-		headerData = line.split(',');
+		headerData = line.trimmed().split(',');
 	}
 
 	// the rest of the lines are model data
@@ -75,6 +75,41 @@ bool csvModel::importFromFile(QString csvFilePath)
 	// set the header labels
 	this->setHorizontalHeaderLabels(headerData);
 
+	emit importedFromFile();
+
 	return true;
+}
+
+//------------------------------------------------------------------------------
+//	FUNCTION: filter [ public ]
+//------------------------------------------------------------------------------
+csvModel* csvModel::filter(csvModel* filter)
+{
+	csvModel* output = new csvModel(this);
+	for (int filterCol = 0; filterCol < filter->columnCount(); ++filterCol)
+	{
+		QString columnName = filter->headerData(filterCol, Qt::Horizontal, Qt::DisplayRole).toString();
+		
+		bool hardHit = filter->data(filter->index(1, filterCol), Qt::CheckStateRole).toBool();
+
+		// find the corresponding column in this spreadsheet
+		int masterColumn;
+		for (masterColumn = 0; masterColumn < this->columnCount(); masterColumn++)
+		{
+			qDebug() << columnName << "?=" << this->headerData(masterColumn, Qt::Horizontal, Qt::DisplayRole).toString();
+			if (this->headerData(masterColumn, Qt::Horizontal, Qt::DisplayRole).toString() == columnName)
+			{
+				qDebug() << masterColumn << "==" << columnName;
+				break;
+			}
+		}
+
+		for (int filterRow = 2; filterRow < filter->rowCount(); ++filterRow)
+		{
+
+		}
+	}
+
+	return output;
 }
 

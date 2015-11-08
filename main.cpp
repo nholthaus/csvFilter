@@ -1,6 +1,6 @@
 #include <QApplication>
 
-#include "csvFilter.h"
+#include "CsvFilterWindow.h"
 
 
 int main(int argc, char* argv[])
@@ -9,7 +9,7 @@ int main(int argc, char* argv[])
 
 	QApplication app(argc, argv);
 
-	CsvFilter csvFilter;
+	CsvFilterWindow csvFilter;
 
 	csvFilter.show();
 	app.exec();

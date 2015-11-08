@@ -29,6 +29,9 @@
 // 
 //--------------------------------------------------------------------------------------------------
 
+#ifndef csvModel_h__
+#define csvModel_h__
+
 //--------------------
 //	INCLUDES
 //--------------------
@@ -53,7 +56,12 @@ public:
 	explicit csvModel(QObject* parent = (QObject*)0);
 	virtual ~csvModel();
 	
-	bool importFromFile(QString csvFilePath);
+	virtual bool importFromFile(QString csvFilePath);
+	csvModel* filter(csvModel* filter);
+
+signals:
+
+	void importedFromFile();
 
 protected:
 
@@ -64,3 +72,4 @@ private:
 
 
 };
+#endif // csvModel_h__

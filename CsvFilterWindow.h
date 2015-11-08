@@ -29,6 +29,9 @@
 // 
 //--------------------------------------------------------------------------------------------------
 
+#ifndef CsvFilterWindow_h__
+#define CsvFilterWindow_h__
+
 //--------------------
 //	INCLUDES
 //--------------------
@@ -47,9 +50,12 @@
 
 // std
 #include <memory>
+#include <random>
 
 // local
 #include "csvModel.h"
+#include "csvFilterModel.h"
+#include "QEventFilter.h"
 
 //------------------------------------------------------------
 //	@class 		
@@ -57,12 +63,12 @@
 //	@brief		Main Window of the csvFilter program
 //	@details	
 //------------------------------------------------------------
-class CsvFilter : public QMainWindow
+class CsvFilterWindow : public QMainWindow
 {
 public:
 
-	explicit CsvFilter(QWidget* parent = (QWidget*)0);
-	virtual ~CsvFilter();
+	explicit CsvFilterWindow(QWidget* parent = (QWidget*)0);
+	virtual ~CsvFilterWindow();
 	
 protected:
 
@@ -70,7 +76,8 @@ protected:
 	virtual void setupFilterSpreadsheet();
 	virtual void setupOutputDock();
 	virtual QSize sizeHint() const override;
-
+	virtual void customContextMenu();
+	virtual void mousePressEvent(QMouseEvent *) override;
 
 private:
 
@@ -83,6 +90,7 @@ private:
 	QLineEdit*				m_masterSpeadSheetLineEdit;
 	QPushButton*			m_masterSpreadSheetBrowseButton;
 	csvModel*				m_masterSpreadSheetModel;
+	QEventFilter*			m_masterDropEventFilter;
 
 	QGroupBox*				m_filterSpreadSheetGroup;
 	QVBoxLayout*			m_filterSpreadSheetLayout;
@@ -90,10 +98,16 @@ private:
 	QLineEdit*				m_filterSpeadSheetLineEdit;
 	QPushButton*			m_filterSpreadSheetBrowseButton;
 	QTableView*				m_filterSpreadSheetView;
-	csvModel*				m_filterSpreadSheetModel;
+	csvFilterModel*			m_filterSpreadSheetModel;
+	QEventFilter*			m_filterDropEventFilter;
 
 	QDockWidget*			m_outputDock;
 	QGroupBox*				m_outputGroup;
 	QTableView*				m_outputView;
 
+	// random numbers for toasty
+	std::default_random_engine generator;
+	std::uniform_int_distribution<int> distribution;
+
 };
+#endif // CsvFilterWindow_h__

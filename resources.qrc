@@ -1,5 +1,7 @@
 <!DOCTYPE RCC><RCC version="1.0">
 	<qresource>
 		<file alias="icons/icon">resources/icons/icon.png</file>
+    <file alias="sounds/toasty">resources/sounds/toasty.mp3</file>
+    <file alias="images/bernese">resources/images/bernese.png</file>
 	</qresource>
 </RCC>

@@ -8,16 +8,21 @@ SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # CODE FILES
 SET(HEADER_CODE
-	csvFilter.h
+	csvFilterWindow.h
 	csvModel.h
+	csvFilterModel.h
+	filterModelDelegate.h
 	QPathEdit.h
+	QEventFilter.h
 )
 
 SET(SOURCE_CODE
 	main.cpp
-	csvFilter.cpp
+	csvFilterWindow.cpp
 	csvModel.cpp
+	csvFilterModel.cpp
 	QPathEdit.cpp
+	QEventFilter.cpp
 )
 
 # QT
@@ -44,6 +49,12 @@ IF(Qt5Widgets_FOUND)
 	SET(LIBRARIES ${LIBRARIES} ${Qt5Widgets_LIBRARIES})
 ENDIF()
 
+FIND_PACKAGE(Qt5Multimedia)
+IF(Qt5Multimedia_FOUND)
+	SET(INCLUDE_DIRS ${INCLUDE_DIRS} ${Qt5Multimedia_INCLUDE_DIRS})
+	SET(LIBRARIES ${LIBRARIES} ${Qt5Multimedia_LIBRARIES})
+ENDIF()
+
 # RESOURCES
 QT5_ADD_RESOURCES(RESOURCES resources.qrc)
 
@@ -57,6 +68,8 @@ INCLUDE_DIRECTORIES(${INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/include)
 ADD_EXECUTABLE(${TARGET} WIN32 ${HEADER_CODE} ${SOURCE_CODE} ${RESOURCES} resources.rc)
 
 TARGET_LINK_LIBRARIES(${TARGET} ${LOGITECH_LIBRARY} ${LIBRARIES})
+
+SET_PROPERTY(TARGET ${TARGET_NAME} PROPERTY LINK_FLAGS "/machine:x86")
 
 # COPY QT DLLS
 ADD_CUSTOM_COMMAND(TARGET ${TARGET} POST_BUILD COMMAND "${QTDIR}/bin/windeployqt.exe" "${EXECUTABLE_OUTPUT_PATH}/$<CONFIG>/${TARGET}${CMAKE_EXECUTABLE_SUFFIX}" --no-translations --no-quick-import)

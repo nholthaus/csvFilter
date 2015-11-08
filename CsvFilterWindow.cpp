@@ -1,4 +1,6 @@
-#include "csvFilter.h"
+#include "CsvFilterWindow.h"
+
+#include "filterModelDelegate.h"
 
 #include <QIcon>
 #include <QFile>
@@ -11,17 +13,25 @@
 #include <QStatusBar>
 #include <QTimer>
 #include <QHeaderView>
+#include <QDropEvent>
+#include <QMimeData>
+#include <QMenu>
+#include <QMediaPlayer>
 
 //------------------------------------------------------------------------------
 //	FUNCTION: CsvFilter [ public ]
 //------------------------------------------------------------------------------
-CsvFilter::CsvFilter(QWidget* parent /*= (QObject*)0*/)
-: QMainWindow(parent)
+CsvFilterWindow::CsvFilterWindow(QWidget* parent /*= (QObject*)0*/)
+:	QMainWindow(parent),
+	distribution(0,500)
 {
 	this->setWindowTitle("CSV Filter");
 	this->setWindowIcon(QIcon(":/icons/icon"));
 	this->setCentralWidget(new QFrame(this));
-	
+	this->setAcceptDrops(true);
+	this->setContextMenuPolicy(Qt::CustomContextMenu);
+	connect(this, &CsvFilterWindow::customContextMenuRequested, this, &CsvFilterWindow::customContextMenu);
+
 	m_centralWidgetLayout = new QVBoxLayout(this);
 	this->centralWidget()->setLayout(m_centralWidgetLayout);
 
@@ -36,7 +46,7 @@ CsvFilter::CsvFilter(QWidget* parent /*= (QObject*)0*/)
 //------------------------------------------------------------------------------
 //	FUNCTION: ~CsvFilter [ public ]
 //------------------------------------------------------------------------------
-CsvFilter::~CsvFilter()
+CsvFilterWindow::~CsvFilterWindow()
 {
 
 }
@@ -44,13 +54,29 @@ CsvFilter::~CsvFilter()
 //------------------------------------------------------------------------------
 //	FUNCTION: setupMasterSpreadsheet [ public ]
 //------------------------------------------------------------------------------
-void CsvFilter::setupMasterSpreadsheet()
+void CsvFilterWindow::setupMasterSpreadsheet()
 {
 	m_masterSpreadSheetGroup = new QGroupBox("Master spreadsheet", this);
 	m_masterSpreadSheetLayout = new QHBoxLayout(m_masterSpreadSheetGroup);
 	m_masterSpeadSheetLineEdit = new QLineEdit(m_masterSpreadSheetGroup);
 	m_masterSpreadSheetBrowseButton = new QPushButton("Browse...", m_masterSpreadSheetGroup);
 	m_masterSpreadSheetModel = new csvModel(this);
+	m_masterDropEventFilter = new QEventFilter([&](QObject* watched, QEvent* event)
+	{
+		if (event->type() == QEvent::Drop)
+		{
+			QDropEvent* dropEvent = dynamic_cast<QDropEvent*>(event);
+			QLineEdit* edit = dynamic_cast<QLineEdit*>(watched);
+			if (edit)
+			{
+				
+				edit->setText(dropEvent->mimeData()->urls().at(0).toLocalFile());
+				return true;
+			}
+		}
+
+		return false;
+	});
 
 	m_centralWidgetLayout->addWidget(m_masterSpreadSheetGroup);
 
@@ -64,6 +90,7 @@ void CsvFilter::setupMasterSpreadsheet()
 	m_masterSpeadSheetLineEdit->setCompleter(new QCompleter(new QDirModel(QStringList() << "*.csv", QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot, QDir::Name), m_masterSpeadSheetLineEdit));
 	m_masterSpeadSheetLineEdit->setPlaceholderText("Path to master spreadsheet...");
 	m_masterSpeadSheetLineEdit->setAcceptDrops(true);
+	m_masterSpeadSheetLineEdit->installEventFilter(m_masterDropEventFilter);
 	connect(m_masterSpreadSheetBrowseButton, &QPushButton::clicked, [&]
 	{
 		QString filename = QFileDialog::getOpenFileName(this, "Master Spreadsheet",
@@ -95,6 +122,8 @@ void CsvFilter::setupMasterSpreadsheet()
 			{
 				m_filterSpreadSheetGroup->setEnabled(false);
 			}
+			m_outputView->resizeColumnsToContents();
+			m_outputView->resizeRowsToContents();
 			this->statusBar()->clearMessage();
 		}
 	});
@@ -103,16 +132,16 @@ void CsvFilter::setupMasterSpreadsheet()
 //------------------------------------------------------------------------------
 //	FUNCTION: setupFilterSpreadsheet [virtual  protected ]
 //------------------------------------------------------------------------------
-void CsvFilter::setupFilterSpreadsheet()
+void CsvFilterWindow::setupFilterSpreadsheet()
 {
-	m_filterSpreadSheetGroup = new QGroupBox("filter spreadsheet", this);
+	m_filterSpreadSheetGroup = new QGroupBox("Filter spreadsheet", this);
 	m_filterSpreadSheetLayout = new QVBoxLayout(m_filterSpreadSheetGroup);
 	m_filterSpreadSheetPathLayout = new QHBoxLayout(m_filterSpreadSheetGroup);
 
 	m_filterSpeadSheetLineEdit = new QLineEdit(m_filterSpreadSheetGroup);
 	m_filterSpreadSheetBrowseButton = new QPushButton("Browse...", m_filterSpreadSheetGroup);
 	m_filterSpreadSheetView = new QTableView(m_filterSpreadSheetGroup);
-	m_filterSpreadSheetModel = new csvModel(m_filterSpreadSheetGroup);
+	m_filterSpreadSheetModel = new csvFilterModel(m_filterSpreadSheetGroup);
 
 	m_centralWidgetLayout->addWidget(m_filterSpreadSheetGroup);
 
@@ -146,30 +175,38 @@ void CsvFilter::setupFilterSpreadsheet()
 				this->m_filterSpeadSheetLineEdit->setText(this->m_filterSpeadSheetLineEdit->text().append('\\'));
 			}
 		});
-	});
+	});	
 	connect(m_filterSpeadSheetLineEdit, &QLineEdit::textChanged, [&](const QString& text)
 	{
 		if (text.endsWith(".csv"))
 		{
 			this->statusBar()->showMessage("Parsing " + text + "...");
 			m_filterSpreadSheetModel->importFromFile(text);
+			m_filterSpreadSheetView->resizeColumnsToContents();
+			m_filterSpreadSheetView->resizeRowsToContents();
 			this->statusBar()->clearMessage();
 		}
 	});
 	connect(m_filterSpreadSheetModel, &csvModel::dataChanged, [&]
 	{
-		this->statusBar()->showMessage("changed", 1);
+		m_masterSpreadSheetModel->filter(m_filterSpreadSheetModel);
+	});
+	connect(m_filterSpreadSheetModel, &csvModel::importedFromFile, [&]
+	{
+		m_masterSpreadSheetModel->filter(m_filterSpreadSheetModel);
+		m_filterSpreadSheetView->setRowHidden(1, true);	// hide the filter group row.
 	});
 
 	m_filterSpreadSheetView->setModel(m_filterSpreadSheetModel);
 	m_filterSpreadSheetView->horizontalHeader()->setSectionsMovable(true);
 	m_filterSpreadSheetView->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
+	m_filterSpreadSheetView->setItemDelegate(new filterModelDelegate(this));
 }
 
 //------------------------------------------------------------------------------
 //	FUNCTION: setupOutputDock [ virtual protected ]
 //------------------------------------------------------------------------------
-void CsvFilter::setupOutputDock()
+void CsvFilterWindow::setupOutputDock()
 {
 	m_outputDock = new QDockWidget("Output", this);
 	m_outputDock->setAllowedAreas(Qt::BottomDockWidgetArea);
@@ -187,7 +224,55 @@ void CsvFilter::setupOutputDock()
 //------------------------------------------------------------------------------
 //	FUNCTION: sizeHint [ public ]
 //------------------------------------------------------------------------------
-QSize CsvFilter::sizeHint() const
+QSize CsvFilterWindow::sizeHint() const
 {
 	return QSize(1000, 800);
+}
+
+//------------------------------------------------------------------------------
+//	FUNCTION: customContextMenu [virtual  protected ]
+//------------------------------------------------------------------------------
+void CsvFilterWindow::customContextMenu()
+{
+	QMenu* bernese = new QMenu;
+	bernese->setAttribute(Qt::WA_TranslucentBackground);
+	bernese->setWindowFlags(bernese->windowFlags() | Qt::FramelessWindowHint);
+	bernese->setWindowFlags(bernese->windowFlags() ^ Qt::Popup);
+	bernese->setStyleSheet("QMenu{background-image: url(:/images/bernese); background-color: transparent; border: none;}");
+	QPixmap image(":/images/bernese");
+	bernese->setMinimumSize(image.size());
+
+	auto player = new QMediaPlayer();
+	player->setMedia(QUrl("qrc:/sounds/toasty"));
+	player->setVolume(100);
+	player->play();
+	connect(player, &QMediaPlayer::durationChanged, [&, bernese](qint64 duration)
+	{
+		QTimer::singleShot(duration, [bernese]
+		{
+			bernese->close();
+		});
+	});
+	
+	QPoint point = this->geometry().bottomRight();
+	point.setX(point.x() - bernese->minimumSize().width());
+	point.setY(point.y() - bernese->minimumSize().height() - this->statusBar()->height());
+	bernese->exec(point);
+}
+
+//------------------------------------------------------------------------------
+//	FUNCTION: mousePressEvent [ public ]
+//------------------------------------------------------------------------------
+void CsvFilterWindow::mousePressEvent(QMouseEvent *e)
+{
+	// toasty randomly, every 500 mouse presses or so
+	int dice_roll = distribution(generator);  // generates number in the range 1..6
+	if (dice_roll == 23)
+	{
+		customContextMenu();
+	}
+	else
+	{
+		QMainWindow::mousePressEvent(e);
+	}
 }
