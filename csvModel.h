@@ -57,6 +57,9 @@ public:
 	virtual ~csvModel();
 	
 	virtual bool importFromFile(QString csvFilePath);
+	virtual bool exportToFile(QString csvFilePath);
+
+	QString file() const;
 	csvModel* filter(csvModel* filter);
 
 signals:
@@ -69,7 +72,7 @@ protected:
 	
 private:
 
-
+	QString m_file;
 
 };
 #endif // csvModel_h__

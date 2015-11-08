@@ -12,8 +12,10 @@
 #include <QFrame>
 #include <QHeaderView>
 #include <QIcon>
+#include <QInputDialog>
 #include <QMediaPlayer>
 #include <QMenu>
+#include <QMenuBar>
 #include <QMimeData>
 #include <QSettings>
 #include <QStandardPaths>
@@ -44,6 +46,7 @@ CsvFilterWindow::CsvFilterWindow(QWidget* parent /*= (QObject*)0*/)
 	setupMasterSpreadsheet();
 	setupFilterSpreadsheet();
 	setupOutputDock();
+	setupFileMenu();
 
 	// restore state
 	QSettings settings("Menari Softworks", "csvFilter");
@@ -136,10 +139,12 @@ void CsvFilterWindow::setupMasterSpreadsheet()
 			if (m_masterSpreadSheetModel->importFromFile(text))
 			{
 				m_filterSpreadSheetGroup->setEnabled(true);
+				m_openFilterAction->setEnabled(true);
 			}
 			else
 			{
 				m_filterSpreadSheetGroup->setEnabled(false);
+				m_openFilterAction->setEnabled(false);
 			}
 			m_outputView->resizeColumnsToContents();
 			m_outputView->resizeRowsToContents();
@@ -208,18 +213,30 @@ void CsvFilterWindow::setupFilterSpreadsheet()
 	});
 	connect(m_filterSpreadSheetModel, &csvModel::dataChanged, [&]
 	{
-		m_masterSpreadSheetModel->filter(m_filterSpreadSheetModel);
+		delete m_outputModel;
+		m_outputModel = m_masterSpreadSheetModel->filter(m_filterSpreadSheetModel);
+		m_outputView->setModel(m_outputModel);
 	});
 	connect(m_filterSpreadSheetModel, &csvModel::importedFromFile, [&]
 	{
-		m_masterSpreadSheetModel->filter(m_filterSpreadSheetModel);
+		delete m_outputModel;
+		m_outputModel = m_masterSpreadSheetModel->filter(m_filterSpreadSheetModel);
+		m_outputView->setModel(m_outputModel);
 		m_filterSpreadSheetView->setRowHidden(1, true);	// hide the filter group row.
 	});
 
 	m_filterSpreadSheetView->setModel(m_filterSpreadSheetModel);
+	m_filterSpreadSheetView->setItemDelegate(new filterModelDelegate(this));
+
+	// setup header drag/dropping
 	m_filterSpreadSheetView->horizontalHeader()->setSectionsMovable(true);
 	m_filterSpreadSheetView->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
-	m_filterSpreadSheetView->setItemDelegate(new filterModelDelegate(this));
+	connect(m_filterSpreadSheetView->horizontalHeader(), &QHeaderView::sectionMoved, 
+		[&](int index, int oldVisualIndex, int newVisualIndex)
+	{
+		m_filterSpreadSheetModel->moveColumn(QModelIndex(), index, QModelIndex(), newVisualIndex);
+	});
+
 	m_filterSpreadSheetGroup->setContextMenuPolicy(Qt::CustomContextMenu);
 	connect(m_filterSpreadSheetGroup, &QTableView::customContextMenuRequested, this, &CsvFilterWindow::filterContextMenu);
 }
@@ -230,16 +247,70 @@ void CsvFilterWindow::setupFilterSpreadsheet()
 void CsvFilterWindow::setupOutputDock()
 {
 	m_outputDock = new QDockWidget("Output", this);
+	m_outputDock->setObjectName("m_outputDock");
 	m_outputDock->setAllowedAreas(Qt::BottomDockWidgetArea);
 	this->addDockWidget(Qt::BottomDockWidgetArea, m_outputDock);
 
 	m_outputView = new QTableView(m_outputDock);
 	m_outputDock->setWidget(m_outputView);
 
+	m_outputModel = new csvModel(this);
+
 	m_outputView->setModel(m_masterSpreadSheetModel);
 	m_outputView->horizontalHeader()->setSectionsMovable(true);
 	m_outputView->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
 	m_outputView->setSortingEnabled(true);
+	m_outputView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+}
+
+//------------------------------------------------------------------------------
+//	FUNCTION: setupFileMenu [virtual  protected ]
+//------------------------------------------------------------------------------
+void CsvFilterWindow::setupFileMenu()
+{
+	m_fileMenu = new QMenu("File", this);
+	m_openFilterAction = new QAction("Open filter spreadsheet...", m_fileMenu);
+	m_openMasterAction = new QAction("Open master spreadsheet...", m_fileMenu);
+	m_saveFilterAction = new QAction("Save filter file...", m_fileMenu);
+	m_saveOutputAction = new QAction("Save output file...", m_fileMenu);
+
+	m_openFilterAction->setEnabled(false);
+
+	connect(m_openFilterAction, &QAction::triggered, m_filterSpreadSheetBrowseButton, &QPushButton::click);
+	connect(m_openMasterAction, &QAction::triggered, m_masterSpreadSheetBrowseButton, &QPushButton::click);
+	connect(m_saveFilterAction, &QAction::triggered, [&]
+	{
+		QString filePath = QFileDialog::getSaveFileName(this, 
+			"Save Filter File", 
+			m_filterSpreadSheetModel->file(),
+			"CSV Spreadsheets (*.csv)");
+		
+		if (!filePath.isEmpty())
+		{
+			m_filterSpreadSheetModel->exportToFile(filePath);
+		}
+	});
+	connect(m_saveOutputAction, &QAction::triggered, [&]
+	{
+		QFileInfo info(m_masterSpreadSheetModel->file());
+		QString filePath = QFileDialog::getSaveFileName(this,
+			"Save Output File",
+			info.dir().absolutePath() + '\\' + "output.csv",
+			"CSV Spreadsheets (*.csv)");
+
+		if (!filePath.isEmpty())
+		{
+			m_masterSpreadSheetModel->exportToFile(filePath);
+		}
+	});
+
+	m_fileMenu->addAction(m_openMasterAction);
+	m_fileMenu->addAction(m_openFilterAction);
+	m_fileMenu->addSeparator();
+	m_fileMenu->addAction(m_saveFilterAction);
+	m_fileMenu->addAction(m_saveOutputAction);
+
+	this->menuBar()->addMenu(m_fileMenu);
 }
 
 //------------------------------------------------------------------------------
@@ -303,13 +374,14 @@ void CsvFilterWindow::mousePressEvent(QMouseEvent *e)
 //------------------------------------------------------------------------------
 void CsvFilterWindow::filterContextMenu(const QPoint& pos)
 {
+
+	QMenu menu;
+	bool addGroupAction = false;
+	bool addUngroupAction = false;
+	QList<int> selectedColumns;
+
 	if (m_filterSpreadSheetView->selectionModel()->hasSelection())
 	{
-		QMenu menu;
-		bool addGroupAction = false;
-		bool addUngroupAction = false;
-		QList<int> selectedColumns;
-
 		for (int col = 0; col < m_filterSpreadSheetModel->columnCount(); ++col)
 		{
 			if (m_filterSpreadSheetView->selectionModel()->columnIntersectsSelection(col, QModelIndex()))
@@ -318,7 +390,6 @@ void CsvFilterWindow::filterContextMenu(const QPoint& pos)
 			}
 		}
 
-		
 		for (int col = 0; col < m_filterSpreadSheetModel->columnCount(); ++col)
 		{
 			if (m_filterSpreadSheetView->selectionModel()->columnIntersectsSelection(col, QModelIndex()))
@@ -340,7 +411,7 @@ void CsvFilterWindow::filterContextMenu(const QPoint& pos)
 			QAction* groupAction = new QAction("group", &menu);
 			menu.addAction(groupAction);
 			connect(groupAction, &QAction::triggered, [&, selectedColumns]
-			{			
+			{
 				m_filterSpreadSheetModel->group(selectedColumns);
 				m_filterSpreadSheetView->clearSelection();
 			});
@@ -359,7 +430,40 @@ void CsvFilterWindow::filterContextMenu(const QPoint& pos)
 
 		if (addGroupAction || addUngroupAction)
 		{
-			menu.exec(this->cursor().pos());
+			menu.addSeparator();
 		}
 	}
+
+	QAction* addFilterAction = new QAction("add filter...", &menu);
+	menu.addAction(addFilterAction);
+	connect(addFilterAction, &QAction::triggered, [&]
+	{
+		QStringList existingFilters;
+		QStringList filters;
+
+		// filter columns headers
+		for (int col = 0; col < m_filterSpreadSheetModel->rowCount(); ++col)
+		{
+			existingFilters << m_filterSpreadSheetModel->headerData(col, Qt::Horizontal).toString();
+		}
+
+		// master column headers
+		for (int col = 0; col < m_masterSpreadSheetModel->rowCount(); ++col)
+		{
+			QString filter = m_masterSpreadSheetModel->headerData(col, Qt::Horizontal).toString();
+			if (!existingFilters.contains(filter))
+			{
+				filters << filter;
+			}
+		}
+
+		bool ok;
+		QString newFilter = QInputDialog::getItem(this, "Add Filter", "Select filter:", filters, 0, false, &ok);
+		if (ok)
+		{
+			m_filterSpreadSheetModel->addFilter(newFilter);
+		}
+	});
+
+	menu.exec(this->cursor().pos());
 }

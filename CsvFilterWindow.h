@@ -75,6 +75,7 @@ protected:
 	virtual void setupMasterSpreadsheet();
 	virtual void setupFilterSpreadsheet();
 	virtual void setupOutputDock();
+	virtual void setupFileMenu();
 	virtual QSize sizeHint() const override;
 	virtual void customContextMenu();
 	virtual void mousePressEvent(QMouseEvent *) override;
@@ -85,32 +86,42 @@ protected:
 private:
 
 	// central widget
-	QVBoxLayout*			m_centralWidgetLayout;
+	QVBoxLayout*						m_centralWidgetLayout;
 
 	// master spread sheet widgets
-	QGroupBox*				m_masterSpreadSheetGroup;
-	QHBoxLayout*			m_masterSpreadSheetLayout;
-	QLineEdit*				m_masterSpeadSheetLineEdit;
-	QPushButton*			m_masterSpreadSheetBrowseButton;
-	csvModel*				m_masterSpreadSheetModel;
-	QEventFilter*			m_masterDropEventFilter;
+	QGroupBox*							m_masterSpreadSheetGroup;
+	QHBoxLayout*						m_masterSpreadSheetLayout;
+	QLineEdit*							m_masterSpeadSheetLineEdit;
+	QPushButton*						m_masterSpreadSheetBrowseButton;
+	csvModel*							m_masterSpreadSheetModel;
+	QEventFilter*						m_masterDropEventFilter;
 
-	QGroupBox*				m_filterSpreadSheetGroup;
-	QVBoxLayout*			m_filterSpreadSheetLayout;
-	QHBoxLayout*			m_filterSpreadSheetPathLayout;
-	QLineEdit*				m_filterSpeadSheetLineEdit;
-	QPushButton*			m_filterSpreadSheetBrowseButton;
-	QTableView*				m_filterSpreadSheetView;
-	csvFilterModel*			m_filterSpreadSheetModel;
-	QEventFilter*			m_filterDropEventFilter;
+	// filter spreadsheet widgets
+	QGroupBox*							m_filterSpreadSheetGroup;
+	QVBoxLayout*						m_filterSpreadSheetLayout;
+	QHBoxLayout*						m_filterSpreadSheetPathLayout;
+	QLineEdit*							m_filterSpeadSheetLineEdit;
+	QPushButton*						m_filterSpreadSheetBrowseButton;
+	QTableView*							m_filterSpreadSheetView;
+	csvFilterModel*						m_filterSpreadSheetModel;
+	QEventFilter*						m_filterDropEventFilter;
 
-	QDockWidget*			m_outputDock;
-	QGroupBox*				m_outputGroup;
-	QTableView*				m_outputView;
+	// output spreadsheet widgets
+	QDockWidget*						m_outputDock;
+	QGroupBox*							m_outputGroup;
+	QTableView*							m_outputView;
+	csvModel*							m_outputModel;
+
+	// menus
+	QMenu*								m_fileMenu;
+	QAction*							m_saveFilterAction;
+	QAction*							m_saveOutputAction;
+	QAction*							m_openFilterAction;
+	QAction*							m_openMasterAction;
 
 	// random numbers for toasty
-	std::default_random_engine generator;
-	std::uniform_int_distribution<int> distribution;
+	std::default_random_engine			generator;
+	std::uniform_int_distribution<int>	distribution;
 
 };
 #endif // CsvFilterWindow_h__
