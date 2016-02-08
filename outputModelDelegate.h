@@ -1,8 +1,8 @@
 //--------------------------------------------------------------------------------------------------
 // 
-/// @PROJECT	cvsFilter
+/// @PROJECT	csvFilter
 ///	@AUTHORS	Nic Holthaus
-/// @DATE		2015/11/01
+/// @DATE		2015/11/11
 // 
 //--------------------------------------------------------------------------------------------------
 //
@@ -29,40 +29,49 @@
 // 
 //--------------------------------------------------------------------------------------------------
 
-#ifndef csvModel_h__
-#define csvModel_h__
+#ifndef outputModelDelegate_h__
+#define outputModelDelegate_h__
 
 //--------------------
 //	INCLUDES
 //--------------------
 
-// Qt
-#include <QObject>
-#include <QStandardItemModel>
-#include <QString>
+#include <QPen>
+#include <QPainter>
+#include <QStyledItemDelegate>
 
 //------------------------------------------------------------
-//	@class 		
+//	@class 		outputModelDelegate
 //------------------------------------------------------------
-//	@brief		standard item model for comma separated value data.
+//	@brief		used to color soft hits from the output filter
 //	@details	
 //------------------------------------------------------------
-class csvModel : public QStandardItemModel
+class outputModelDelegate : public QStyledItemDelegate
 {
-	Q_OBJECT
-
 public:
 
-	explicit csvModel(QObject* parent = (QObject*)0);
-	virtual ~csvModel();
-	
-	virtual bool importFromFile(QString csvFilePath);
+	explicit outputModelDelegate(QObject* parent = (QObject*)0) : QStyledItemDelegate(parent) {}
+	virtual ~outputModelDelegate() {};
+	virtual void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override
+	{
+		const QAbstractItemModel* model = index.model();
+		int softHitOder = model->data(index, Qt::UserRole).toInt();
+		if (softHitOder > 0)
+		{
+			painter->save();
 
-	QString file() const;
+			QPen pen;
+			pen.setStyle(Qt::NoPen);
+			painter->setPen(pen);
 
-signals:
+			painter->setBrush(QColor("#FFADAD"));
+			painter->drawRect(option.rect);
+			painter->restore();
+		}
 
-	void importedFromFile();
+		QStyledItemDelegate::paint(painter, option, index);
+	}
+
 
 protected:
 
@@ -70,7 +79,8 @@ protected:
 	
 private:
 
-	QString m_file;
+
 
 };
-#endif // csvModel_h__
+
+#endif // outputModelDelegate_h__

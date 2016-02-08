@@ -1,8 +1,8 @@
 //--------------------------------------------------------------------------------------------------
 // 
-/// @PROJECT	cvsFilter
+/// @PROJECT	csvFilter
 ///	@AUTHORS	Nic Holthaus
-/// @DATE		2015/11/01
+/// @DATE		2015/11/11
 // 
 //--------------------------------------------------------------------------------------------------
 //
@@ -29,48 +29,56 @@
 // 
 //--------------------------------------------------------------------------------------------------
 
-#ifndef csvModel_h__
-#define csvModel_h__
+#ifndef csvFilterProxyModel_h__
+#define csvFilterProxyModel_h__
 
 //--------------------
 //	INCLUDES
 //--------------------
 
-// Qt
-#include <QObject>
-#include <QStandardItemModel>
-#include <QString>
+#include "csvFilterModel.h"
+
+#include <QSortFilterProxyModel>
 
 //------------------------------------------------------------
-//	@class 		
+//	@class 		csvFilterProxyModel
 //------------------------------------------------------------
-//	@brief		standard item model for comma separated value data.
+//	@brief		Filters a csvModel according to a csvFilterModel
 //	@details	
 //------------------------------------------------------------
-class csvModel : public QStandardItemModel
+class csvFilterProxyModel : public QSortFilterProxyModel
 {
-	Q_OBJECT
-
 public:
 
-	explicit csvModel(QObject* parent = (QObject*)0);
-	virtual ~csvModel();
+	explicit csvFilterProxyModel(QObject* parent = (QObject*)0);
+	virtual ~csvFilterProxyModel();
+	virtual bool filterAcceptsRow(int source_row, const QModelIndex &source_parent) const override;
 	
-	virtual bool importFromFile(QString csvFilePath);
+	void setFilterModel(const csvFilterModel* filterModel);
+	void setDuplicateFilterColumn(QString title);
+	void setDuplicateFilteringEnabled(bool enabled);
+	void setSingleEntryFilteringEnabled(bool enabled);
 
-	QString file() const;
+	void setFilterRegExp(const QRegExp& regExp) = delete;
+	void setFilterRegExp(const QString& pattern) = delete;
 
-signals:
+public slots:
 
-	void importedFromFile();
+	void invalidate();
 
 protected:
 
-	
+	virtual bool lessThan(const QModelIndex &source_left, const QModelIndex &source_right) const override;
 	
 private:
 
-	QString m_file;
+	const csvFilterModel*				m_filterModel;
+	QList<QList<QPair<int, int>>>		m_filterMapping;
+	QHash<QString, int>					m_duplicateMapping;
+	int									m_duplicateColumn;
 
+	bool								m_removeDuplicates;
+	bool								m_removeSingles;
 };
-#endif // csvModel_h__
+
+#endif // csvFilterProxyModel_h__

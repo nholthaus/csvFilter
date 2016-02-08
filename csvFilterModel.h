@@ -1,8 +1,8 @@
 //--------------------------------------------------------------------------------------------------
 // 
-/// @PROJECT	cvsFilter
+/// @PROJECT	csvFilter
 ///	@AUTHORS	Nic Holthaus
-/// @DATE		2015/11/01
+/// @DATE		2015/11/08
 // 
 //--------------------------------------------------------------------------------------------------
 //
@@ -29,40 +29,38 @@
 // 
 //--------------------------------------------------------------------------------------------------
 
-#ifndef csvModel_h__
-#define csvModel_h__
+#ifndef csvFilterModel_h__
+#define csvFilterModel_h__
 
 //--------------------
 //	INCLUDES
 //--------------------
+#include "csvModel.h"
 
-// Qt
-#include <QObject>
-#include <QStandardItemModel>
-#include <QString>
+#include <set>
 
 //------------------------------------------------------------
-//	@class 		
+//	@class 		csvFilterModel
 //------------------------------------------------------------
-//	@brief		standard item model for comma separated value data.
+//	@brief		model with handling for the special rows that
+//				filter csv's contain.
 //	@details	
 //------------------------------------------------------------
-class csvModel : public QStandardItemModel
+class csvFilterModel : public csvModel
 {
-	Q_OBJECT
-
 public:
 
-	explicit csvModel(QObject* parent = (QObject*)0);
-	virtual ~csvModel();
-	
-	virtual bool importFromFile(QString csvFilePath);
+	explicit csvFilterModel(QObject* parent = (QObject*)0);
+	virtual ~csvFilterModel();
+	virtual bool importFromFile(QString csvFilePath) override;
 
-	QString file() const;
+	virtual void group(QList<int> columns);
+	virtual void ungroup(QList<int> columns);
 
-signals:
+	virtual bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
+	virtual bool moveColumn(const QModelIndex &sourceParent, int sourceColumn, const QModelIndex &destinationParent, int destinationChild);
 
-	void importedFromFile();
+	virtual void addFilter(const QString& filter);
 
 protected:
 
@@ -70,7 +68,6 @@ protected:
 	
 private:
 
-	QString m_file;
 
 };
-#endif // csvModel_h__
+#endif // csvFilterModel_h__

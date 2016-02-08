@@ -11,7 +11,9 @@ SET(HEADER_CODE
 	csvFilterWindow.h
 	csvModel.h
 	csvFilterModel.h
+	csvFilterProxyModel.h
 	filterModelDelegate.h
+	outputModelDelegate.h
 	QPathEdit.h
 	QEventFilter.h
 )
@@ -21,6 +23,7 @@ SET(SOURCE_CODE
 	csvFilterWindow.cpp
 	csvModel.cpp
 	csvFilterModel.cpp
+	csvFilterProxyModel.cpp
 	QPathEdit.cpp
 	QEventFilter.cpp
 )

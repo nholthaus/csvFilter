@@ -1,6 +1,7 @@
 #include "CsvFilterWindow.h"
 
 #include "filterModelDelegate.h"
+#include "outputModelDelegate.h"
 
 #include <QAction>
 #include <QCompleter>
@@ -161,9 +162,14 @@ void CsvFilterWindow::setupFilterSpreadsheet()
 	m_filterSpreadSheetGroup = new QGroupBox("Filter spreadsheet", this);
 	m_filterSpreadSheetLayout = new QVBoxLayout(m_filterSpreadSheetGroup);
 	m_filterSpreadSheetPathLayout = new QHBoxLayout(m_filterSpreadSheetGroup);
+	m_filterSpeadSheetDuplicateLayout = new QHBoxLayout(m_filterSpreadSheetGroup);
 
 	m_filterSpeadSheetLineEdit = new QLineEdit(m_filterSpreadSheetGroup);
 	m_filterSpreadSheetBrowseButton = new QPushButton("Browse...", m_filterSpreadSheetGroup);
+	m_filterDuplicatesCheckbox = new QCheckBox("Remove Duplicates?", m_filterSpreadSheetGroup);
+	m_filterSinglesCheckbox = new QCheckBox("Remove Single Entries?", m_filterSpreadSheetGroup);
+	m_filterDuplicatesLabel = new QLabel("Column to filter:", m_filterSpreadSheetGroup);
+	m_filterDuplicatesCombobox = new QComboBox(m_filterSpreadSheetGroup);
 	m_filterSpreadSheetView = new QTableView(m_filterSpreadSheetGroup);
 	m_filterSpreadSheetModel = new csvFilterModel(m_filterSpreadSheetGroup);
 
@@ -171,10 +177,17 @@ void CsvFilterWindow::setupFilterSpreadsheet()
 
 	m_filterSpreadSheetGroup->setLayout(m_filterSpreadSheetLayout);
 	m_filterSpreadSheetLayout->addLayout(m_filterSpreadSheetPathLayout);
+	m_filterSpreadSheetLayout->addLayout(m_filterSpeadSheetDuplicateLayout);
 	m_filterSpreadSheetLayout->addWidget(m_filterSpreadSheetView);
 
 	m_filterSpreadSheetPathLayout->addWidget(m_filterSpeadSheetLineEdit);
 	m_filterSpreadSheetPathLayout->addWidget(m_filterSpreadSheetBrowseButton);
+
+	m_filterSpeadSheetDuplicateLayout->addWidget(m_filterDuplicatesCheckbox);
+	m_filterSpeadSheetDuplicateLayout->addWidget(m_filterSinglesCheckbox);
+	m_filterSpeadSheetDuplicateLayout->addWidget(m_filterDuplicatesLabel);
+	m_filterSpeadSheetDuplicateLayout->addWidget(m_filterDuplicatesCombobox);
+	m_filterSpeadSheetDuplicateLayout->addSpacerItem(new QSpacerItem(0, 0, QSizePolicy::MinimumExpanding));
 
 	m_filterSpreadSheetGroup->setEnabled(false);
 	m_filterSpreadSheetGroup->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -211,22 +224,59 @@ void CsvFilterWindow::setupFilterSpreadsheet()
 			this->statusBar()->clearMessage();
 		}
 	});
+
+	connect(m_filterDuplicatesCheckbox, &QCheckBox::stateChanged, [&](int state)
+	{
+		if (state == Qt::Checked)
+		{
+			m_outputProxyModel->setDuplicateFilteringEnabled(true);
+		}
+		else if (state == Qt::Unchecked)
+		{
+			m_outputProxyModel->setDuplicateFilteringEnabled(false);
+		}
+	});
+	connect(m_filterSinglesCheckbox, &QCheckBox::stateChanged, [&](int state)
+	{
+		if (state == Qt::Checked)
+		{
+			m_outputProxyModel->setSingleEntryFilteringEnabled(true);
+		}
+		else if (state == Qt::Unchecked)
+		{
+			m_outputProxyModel->setSingleEntryFilteringEnabled(false);
+		}
+	});
+	connect(m_filterDuplicatesCombobox, static_cast<void (QComboBox::*)(const QString&)>(&QComboBox::currentIndexChanged), [&](const QString& title)
+	{
+		m_outputProxyModel->setDuplicateFilterColumn(title);
+	});
+	connect(m_masterSpreadSheetModel, &csvModel::importedFromFile, [&]
+	{
+		QStringList filters;
+		// master column headers
+		for (int col = 0; col < m_masterSpreadSheetModel->rowCount(); ++col)
+		{
+			filters << m_masterSpreadSheetModel->headerData(col, Qt::Horizontal).toString();
+		}
+		m_filterDuplicatesCombobox->addItems(filters);
+		m_filterDuplicatesCombobox->setCurrentIndex(m_filterDuplicatesCombobox->findText("E1765_CODCASO"));
+		m_filterDuplicatesCombobox->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+	});
+
 	connect(m_filterSpreadSheetModel, &csvModel::dataChanged, [&]
 	{
-		delete m_outputModel;
-		m_outputModel = m_masterSpreadSheetModel->filter(m_filterSpreadSheetModel);
-		m_outputView->setModel(m_outputModel);
+		m_outputProxyModel->invalidate();
 	});
 	connect(m_filterSpreadSheetModel, &csvModel::importedFromFile, [&]
 	{
-		delete m_outputModel;
-		m_outputModel = m_masterSpreadSheetModel->filter(m_filterSpreadSheetModel);
-		m_outputView->setModel(m_outputModel);
+		m_outputProxyModel->setFilterModel(m_filterSpreadSheetModel);
 		m_filterSpreadSheetView->setRowHidden(1, true);	// hide the filter group row.
 	});
 
 	m_filterSpreadSheetView->setModel(m_filterSpreadSheetModel);
 	m_filterSpreadSheetView->setItemDelegate(new filterModelDelegate(this));
+	m_filterSpreadSheetView->setEditTriggers(QAbstractItemView::AllEditTriggers);
 
 	// setup header drag/dropping
 	m_filterSpreadSheetView->horizontalHeader()->setSectionsMovable(true);
@@ -249,16 +299,20 @@ void CsvFilterWindow::setupOutputDock()
 	m_outputDock = new QDockWidget("Output", this);
 	m_outputDock->setObjectName("m_outputDock");
 	m_outputDock->setAllowedAreas(Qt::BottomDockWidgetArea);
+	m_outputDock->setFeatures(QDockWidget::DockWidgetFloatable | QDockWidget::DockWidgetMovable);
 	this->addDockWidget(Qt::BottomDockWidgetArea, m_outputDock);
 
 	m_outputView = new QTableView(m_outputDock);
 	m_outputDock->setWidget(m_outputView);
 
-	m_outputModel = new csvModel(this);
+	m_outputProxyModel = new csvFilterProxyModel(this);
 
-	m_outputView->setModel(m_masterSpreadSheetModel);
+	m_outputProxyModel->setSourceModel(m_masterSpreadSheetModel);
+
+	m_outputView->setModel(m_outputProxyModel);
 	m_outputView->horizontalHeader()->setSectionsMovable(true);
 	m_outputView->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
+	m_outputView->setItemDelegate(new outputModelDelegate(m_outputView));
 	m_outputView->setSortingEnabled(true);
 	m_outputView->setEditTriggers(QAbstractItemView::NoEditTriggers);
 }
@@ -287,7 +341,7 @@ void CsvFilterWindow::setupFileMenu()
 		
 		if (!filePath.isEmpty())
 		{
-			m_filterSpreadSheetModel->exportToFile(filePath);
+			exportToFile(m_filterSpreadSheetModel, filePath);
 		}
 	});
 	connect(m_saveOutputAction, &QAction::triggered, [&]
@@ -300,7 +354,7 @@ void CsvFilterWindow::setupFileMenu()
 
 		if (!filePath.isEmpty())
 		{
-			m_masterSpreadSheetModel->exportToFile(filePath);
+			exportToFile(m_outputProxyModel, filePath);
 		}
 	});
 
@@ -463,7 +517,61 @@ void CsvFilterWindow::filterContextMenu(const QPoint& pos)
 		{
 			m_filterSpreadSheetModel->addFilter(newFilter);
 		}
+
+		m_outputProxyModel->invalidate();
 	});
 
 	menu.exec(this->cursor().pos());
+}
+
+//------------------------------------------------------------------------------
+//	FUNCTION: exportToFile [virtual  protected ]
+//------------------------------------------------------------------------------
+bool CsvFilterWindow::exportToFile(QAbstractItemModel* model, QString csvFilePath)
+{
+	QFile file(csvFilePath);
+
+	if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+	{
+		return false;
+	}
+
+	QTextStream out(&file);
+	// write the header data
+	for (int col = 0; col < model->columnCount(); col++)
+	{
+		if (col != 0) out << ',';
+		out << model->headerData(col, Qt::Horizontal).toString();
+	}
+	out << '\n';
+
+	// write the row data
+	for (int row = 0; row < model->rowCount(); row++)
+	{
+		for (int col = 0; col < model->columnCount(); col++)
+		{
+			if (col != 0) out << ',';
+			if (!model->data(model->index(row, col), Qt::CheckStateRole).isNull())
+			{
+				out << model->data(model->index(row, col), Qt::CheckStateRole).toString();
+			}
+			else
+			{
+				out << model->data(model->index(row, col), Qt::DisplayRole).toString().trimmed();
+			}
+		}
+		out << '\n';
+	}
+
+	file.close();
+
+	return true;
+}
+
+//------------------------------------------------------------------------------
+//	FUNCTION: populateColumnsCombobox [virtual  protected ]
+//------------------------------------------------------------------------------
+void CsvFilterWindow::populateColumnsCombobox()
+{
+
 }

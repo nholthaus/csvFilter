@@ -37,8 +37,11 @@
 //--------------------
 
 // Qt
+#include <QCheckBox>
+#include <QComboBox>
 #include <QMainWindow>
 #include <QGroupBox>
+#include <QLabel>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QLineEdit>
@@ -56,6 +59,7 @@
 #include "csvModel.h"
 #include "csvFilterModel.h"
 #include "QEventFilter.h"
+#include "csvFilterProxyModel.h"
 
 //------------------------------------------------------------
 //	@class 		
@@ -72,6 +76,7 @@ public:
 	
 protected:
 
+	virtual bool exportToFile(QAbstractItemModel* model, QString csvFilePath);
 	virtual void setupMasterSpreadsheet();
 	virtual void setupFilterSpreadsheet();
 	virtual void setupOutputDock();
@@ -79,6 +84,7 @@ protected:
 	virtual QSize sizeHint() const override;
 	virtual void customContextMenu();
 	virtual void mousePressEvent(QMouseEvent *) override;
+	virtual void populateColumnsCombobox();
 
 	void filterContextMenu(const QPoint& pos);
 	virtual void closeEvent(QCloseEvent *) override;
@@ -100,6 +106,11 @@ private:
 	QGroupBox*							m_filterSpreadSheetGroup;
 	QVBoxLayout*						m_filterSpreadSheetLayout;
 	QHBoxLayout*						m_filterSpreadSheetPathLayout;
+	QHBoxLayout*						m_filterSpeadSheetDuplicateLayout;
+	QCheckBox*							m_filterDuplicatesCheckbox;
+	QCheckBox*							m_filterSinglesCheckbox;
+	QLabel*								m_filterDuplicatesLabel;
+	QComboBox*							m_filterDuplicatesCombobox;
 	QLineEdit*							m_filterSpeadSheetLineEdit;
 	QPushButton*						m_filterSpreadSheetBrowseButton;
 	QTableView*							m_filterSpreadSheetView;
@@ -110,7 +121,7 @@ private:
 	QDockWidget*						m_outputDock;
 	QGroupBox*							m_outputGroup;
 	QTableView*							m_outputView;
-	csvModel*							m_outputModel;
+	csvFilterProxyModel*				m_outputProxyModel;
 
 	// menus
 	QMenu*								m_fileMenu;
